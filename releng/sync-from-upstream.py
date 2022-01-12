@@ -26,7 +26,6 @@ upstreams = {
     "libsoup": make_gnome_url("libsoup"),
     "vala": make_gnome_url("vala"),
     "pkg-config": "https://gitlab.freedesktop.org/pkg-config/pkg-config.git",
-    "quickjs": "https://github.com/bellard/quickjs.git",
     "gn": "https://gn.googlesource.com/gn",
     "v8": "https://chromium.googlesource.com/v8/v8",
     "v8/build": "https://chromium.googlesource.com/chromium/src/build",
@@ -60,7 +59,7 @@ def sync(repo_path):
         subprocess.run(["git", "checkout", "master"], cwd=repo_path, capture_output=True, check=True)
         subprocess.run(["git", "pull"], cwd=repo_path, capture_output=True, check=True)
         result = subprocess.run(["git", "status"], cwd=repo_path, capture_output=True, check=True, encoding='utf-8')
-        if not "working tree clean" in result.stdout:
+        if "working tree clean" not in result.stdout:
             raise WorkingTreeDirtyError("Working tree is dirty")
 
         subprocess.run(["git", "remote", "add", "upstream", upstream_url], cwd=repo_path, capture_output=True)
