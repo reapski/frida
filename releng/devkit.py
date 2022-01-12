@@ -162,7 +162,7 @@ def ingest_header(header, all_header_files, processed_header_files, result):
                 for other_header in all_header_files:
                     if other_header.endswith("/" + name):
                         inline = True
-                        if not other_header in processed_header_files:
+                        if other_header not in processed_header_files:
                             processed_header_files.add(other_header)
                             ingest_header(other_header, all_header_files, processed_header_files, result)
                         break
@@ -310,7 +310,7 @@ def generate_library_unix(package, frida_root, host, flavor, output_dir, library
     extra_flags += infer_linker_flags(library_flags)
 
     v8_libs = [path for path in library_paths if os.path.basename(path).startswith("libv8")]
-    if len(v8_libs) > 0:
+    if v8_libs:
         v8_libdir = os.path.dirname(v8_libs[0])
         libcxx_libs = glob(os.path.join(v8_libdir, "c++", "*.a"))
         library_paths.extend(libcxx_libs)
@@ -366,19 +366,32 @@ def generate_library_unix(package, frida_root, host, flavor, output_dir, library
 
 def extract_public_thirdparty_symbol_mappings(mappings):
     public_prefixes = ["g_", "glib_", "gobject_", "gio_", "gee_", "json_", "cs_"]
-    return [(original, renamed) for original, renamed in mappings if any([original.startswith(prefix) for prefix in public_prefixes])]
+    return [
+        (original, renamed)
+        for original, renamed in mappings
+        if any(original.startswith(prefix) for prefix in public_prefixes)
+    ]
 
 def get_thirdparty_symbol_mappings(library, rc):
     return [(name, "_frida_" + name) for name in get_thirdparty_symbol_names(library, rc)]
 
 def get_thirdparty_symbol_names(library, rc):
-    visible_names = list(set([name for kind, name in get_symbols(library, rc) if kind in ('T', 'D', 'B', 'R', 'C')]))
+    visible_names = list(
+        {
+            name
+            for kind, name in get_symbols(library, rc)
+            if kind in ('T', 'D', 'B', 'R', 'C')
+        }
+    )
+
     visible_names.sort()
 
     frida_prefixes = ["frida", "_frida", "gum", "_gum"]
-    thirdparty_names = [name for name in visible_names if not any([name.startswith(prefix) for prefix in frida_prefixes])]
-
-    return thirdparty_names
+    return [
+        name
+        for name in visible_names
+        if not any(name.startswith(prefix) for prefix in frida_prefixes)
+    ]
 
 def get_symbols(library, rc):
     result = []
@@ -428,25 +441,24 @@ def generate_example(filename, package, frida_root, host, kit, flavor, extra_ldf
 
     if platform.system() == 'Windows':
         return example_code
-    else:
-        rc = env_rc(frida_root, host, flavor)
+    rc = env_rc(frida_root, host, flavor)
 
-        cc = probe_env(rc, "echo $CC")
-        cflags = probe_env(rc, "echo $CFLAGS")
-        ldflags = probe_env(rc, "echo $LDFLAGS")
+    cc = probe_env(rc, "echo $CC")
+    cflags = probe_env(rc, "echo $CFLAGS")
+    ldflags = probe_env(rc, "echo $LDFLAGS")
 
-        (cflags, ldflags) = tweak_flags(cflags, " ".join([" ".join(extra_ldflags), ldflags]))
+    (cflags, ldflags) = tweak_flags(cflags, " ".join([" ".join(extra_ldflags), ldflags]))
 
-        params = {
-            "cc": "clang" if host.split("-")[0] in ["macos", "ios", "android"] else "gcc",
-            "cflags": cflags,
-            "ldflags": ldflags,
-            "source_filename": filename,
-            "program_filename": os.path.splitext(filename)[0],
-            "library_name": kit
-        }
+    params = {
+        "cc": "clang" if host.split("-")[0] in ["macos", "ios", "android"] else "gcc",
+        "cflags": cflags,
+        "ldflags": ldflags,
+        "source_filename": filename,
+        "program_filename": os.path.splitext(filename)[0],
+        "library_name": kit
+    }
 
-        preamble = """\
+    preamble = """\
 /*
  * Compile with:
  *
@@ -455,7 +467,7 @@ def generate_example(filename, package, frida_root, host, kit, flavor, extra_ldf
  * Visit https://frida.re to learn more about Frida.
  */""" % params
 
-        return preamble + "\n\n" + example_code
+    return preamble + "\n\n" + example_code
 
 def asset_path(name):
     return os.path.join(os.path.dirname(__file__), "devkit-assets", name)
@@ -479,16 +491,10 @@ def msvs_runtime_path(host):
     return os.path.join(winenv.get_msvc_tool_dir(), "bin", "HostX86", "x86")
 
 def msvs_arch_config(host):
-    if host == "windows-x86_64":
-        return "x64-Release"
-    else:
-        return "Win32-Release"
+    return "x64-Release" if host == "windows-x86_64" else "Win32-Release"
 
 def msvs_arch_suffix(host):
-    if host == "windows-x86_64":
-        return "-64"
-    else:
-        return "-32"
+    return "-64" if host == "windows-x86_64" else "-32"
 
 def compute_library_filename(kit):
     if platform.system() == 'Windows':
@@ -575,18 +581,18 @@ def tweak_flags(cflags, ldflags):
 
     pending_ldflags = tweaked_ldflags
     tweaked_ldflags = []
-    while len(pending_ldflags) > 0:
+    while pending_ldflags:
         flag = pending_ldflags.pop(0)
 
         raw_flags = []
         while flag.startswith("-Wl,"):
             raw_flags.append(flag[4:])
-            if len(pending_ldflags) > 0:
+            if pending_ldflags:
                 flag = pending_ldflags.pop(0)
             else:
                 flag = None
                 break
-        if len(raw_flags) > 0:
+        if raw_flags:
             merged_flags = "-Wl," + ",".join(raw_flags)
             if "--icf=" in merged_flags:
                 tweaked_ldflags.append("-fuse-ld=gold")
@@ -615,11 +621,7 @@ if __name__ == "__main__":
     kit = arguments.kit
     host = arguments.host
     outdir = os.path.abspath(arguments.outdir)
-    if arguments.thin:
-        flavor = "_thin"
-    else:
-        flavor = ""
-
+    flavor = "_thin" if arguments.thin else ""
     try:
         os.makedirs(outdir)
     except:

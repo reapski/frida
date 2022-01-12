@@ -372,16 +372,16 @@ if __name__ == '__main__':
             "frida-core",
         ]
 
+        tarball_asset_mimetype = "application/x-xz"
+
+        sfx_asset_mimetype = "application/octet-stream"
+
         for kit in kits:
             name = "{}-devkit-{}-{}".format(kit, version, host)
 
             tarball_filename = name + ".tar"
             tarball_asset_filename = tarball_filename + ".xz"
-            tarball_asset_mimetype = "application/x-xz"
-
             sfx_asset_filename = name + ".exe"
-            sfx_asset_mimetype = "application/octet-stream"
-
             output_dir = tempfile.mkdtemp(prefix="frida-release")
             try:
                 try:

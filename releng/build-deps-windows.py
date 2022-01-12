@@ -153,7 +153,12 @@ def main():
     else:
         bundle_ids = [Bundle[arguments.bundle.upper()]]
 
-    selected = set([pkg_name for bundle_id in bundle_ids for pkg_name in ALL_BUNDLES[bundle_id]])
+    selected = {
+        pkg_name
+        for bundle_id in bundle_ids
+        for pkg_name in ALL_BUNDLES[bundle_id]
+    }
+
     packages = [pkg for pkg in ALL_PACKAGES if pkg[0] in selected]
     if arguments.v8 == 'disabled':
         packages = [pkg for pkg in packages if pkg[0] != "v8"]
@@ -418,13 +423,12 @@ def build_package(name: str, role: PackageRole, spec: PackageSpec, extra_options
 
                 if spec.recipe == 'meson':
                     build_using_meson(name, arch, config, runtime, spec, extra_options)
+                elif name == "openssl":
+                    build_openssl(arch, config, runtime, spec, extra_options)
                 else:
-                    if name == "openssl":
-                        build_openssl(arch, config, runtime, spec, extra_options)
-                    else:
-                        assert name == "v8"
-                        assert spec.recipe == 'custom'
-                        build_v8(arch, config, runtime, spec, extra_options)
+                    assert name == "v8"
+                    assert spec.recipe == 'custom'
+                    build_v8(arch, config, runtime, spec, extra_options)
 
                 assert manifest_path.exists()
 
@@ -947,8 +951,13 @@ def package(bundle_ids: List[Bundle], params: DependencyParameters):
             for root, dirs, files in os.walk(BOOTSTRAP_TOOLCHAIN_DIR):
                 relpath = PurePath(root).relative_to(BOOTSTRAP_TOOLCHAIN_DIR)
                 all_files = [relpath / f for f in files]
-                toolchain_mixin_files += [f for f in all_files if not (file_is_vala_toolchain_related(f) or \
-                        f.parent.name == "manifest")]
+                toolchain_mixin_files += [
+                    f
+                    for f in all_files
+                    if not file_is_vala_toolchain_related(f)
+                    and f.parent.name != "manifest"
+                ]
+
             toolchain_mixin_files.sort()
 
         sdk_built_files = []
@@ -1003,7 +1012,7 @@ def fix_manifests(root: Path):
                 if prefix.joinpath(dynamic_entry).exists():
                     manifest_lines.append(dynamic_entry)
 
-        if len(manifest_lines) > 0:
+        if manifest_lines:
             manifest_lines.sort()
             manifest_path.write_text("\n".join(manifest_lines), encoding='utf-8')
         else:

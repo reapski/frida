@@ -59,8 +59,8 @@ def patch_config_header(header_path, source_dir, build_dir, gn=None, env=None):
 def query_gn(label_or_pattern, what, source_dir, build_dir, gn, env):
     if gn is None:
         gn = shutil.which("gn")
-        if gn is None:
-            raise ValueError("unable to find “gn”; is it on your PATH?")
+    if gn is None:
+        raise ValueError("unable to find “gn”; is it on your PATH?")
 
     args = [
         os.path.abspath(gn),
@@ -88,10 +88,7 @@ if __name__ == '__main__':
             except Exception as e:
                 parser.exit(1, str(e) + "\n")
 
-            if prop == "version":
-                result = version
-            else:
-                result = api_version
+            result = version if prop == "version" else api_version
         elif prop == "libs":
             libs = query_libs(args.source_dir, get_build_dir(args), args.gn)
             result = " ".join(["-l" + lib for lib in libs])

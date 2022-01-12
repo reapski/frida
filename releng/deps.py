@@ -228,7 +228,7 @@ def read_dependency_parameters(host_defines: Dict[str, str] = {}) -> DependencyP
         raw_params[key] = value
 
     packages = {}
-    for key in [k for k in raw_params.keys() if k.endswith("_recipe")]:
+    for key in [k for k in raw_params if k.endswith("_recipe")]:
         name = key[:-7]
         packages[name] = PackageSpec(
                 parse_string_value(raw_params[name + "_version"], raw_params),
